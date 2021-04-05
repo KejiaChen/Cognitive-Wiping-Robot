@@ -10,8 +10,13 @@ Optionally:
 - Detect the contour of largest white area.
 
 ### Detect the stains
-Reserve the contours inside ```max_cnt``` as stains to be cleaned.
-![Real_time Detect](RealSense_stain_detect.png)
-
+Reserve only contours inside ```max_cnt``` as stains to be cleaned. Add centers of all stains (marked as red) as nodes for planning algorithms.
+![Real_time Detect](RealSense_Detect.png)
 
 ## Motion Planning
+The task of passing all the nodes is formed as a [Traveling Salesman Problem](https://en.wikipedia.org/wiki/Travelling_salesman_problem#As_a_graph_problem), and will be solved by following algorithms.
+### Nearst Neighbors
+Starting from the initial position (current position of end effector, marked as blue), select the nearst node to be the next move.
+![Nearst_Neighbors](RealSense_Planning.png)
+
+### Ant colony optimization

@@ -8,6 +8,8 @@
 import pyrealsense2 as rs
 import numpy as np
 import cv2
+import random
+from Motion_Panning_Algorithms.NearstNeighbors import nearst_neighbor_planning as nn
 
 # Configure depth and color streams
 pipeline = rs.pipeline()
@@ -42,17 +44,19 @@ try:
         # Convert images to numpy arrays
         color_image = np.asanyarray(color_frame.get_data())
 
-        # select region of interest
-        roi = cv2.selectROI(windowName="roi", img=color_image, showCrosshair=True, fromCenter=False)
-        x, y, w, h = roi
-        cv2.rectangle(img=color_image, pt1=(x, y), pt2=(x + w, y + h), color=(0, 0, 255), thickness=2)
-        color_image = color_image[y:y + h, x:x + w]
+        # # select region of interest
+        # roi = cv2.selectROI(windowName="roi", img=color_image, showCrosshair=True, fromCenter=False)
+        # x, y, w, h = roi
+        # cv2.rectangle(img=color_image, pt1=(x, y), pt2=(x + w, y + h), color=(0, 0, 255), thickness=2)
+        # color_image = color_image[y:y + h, x:x + w]
 
         gray_img = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
 
         ret, thresh = cv2.threshold(gray_img, 127, 255, 0)
         contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         # print("length of contours", len(contours))
+
+        color_image_dim = color_image.shape
 
         # cv2.drawContours(gray_img, contours, -1, (0, 255, 0), 3)
         if contours:
@@ -82,10 +86,40 @@ try:
                         contours.pop(i)
                         break
 
-            draw_contours = contours
-            draw_contours.append(max_cnt)
-
+            draw_contours = contours[:]
+            # draw_contours.append(max_cnt)
             cv2.drawContours(color_image, draw_contours, -1, (0, 255, 0), 3)
+
+            nodes = []
+            # start position
+            # start_x = random.randint(0, color_image_dim[0])
+            # start_y = random.randint(0, color_image_dim[1])
+            start_x = int(color_image_dim[0] / 3)
+            start_y = int(color_image_dim[1] / 3)
+            nodes.append(np.array([start_x, start_y]))
+            color_image = cv2.circle(color_image, (start_x, start_y), radius=0, color=(255, 0, 0), thickness=7)
+
+            # stain centers as nodes
+            contours.pop(0)
+            for cnt in contours:
+                M = cv2.moments(cnt)
+                if M['m00']:
+                    cx = int(M['m10'] / M['m00'])
+                    cy = int(M['m01'] / M['m00'])
+                    nodes.append(np.array([cx, cy]))
+                    color_image = cv2.circle(color_image, (cx, cy), radius=0, color=(0, 0, 255), thickness=7)
+
+            # for u in nodes:
+            #     print("node: ", u)
+
+            # motion planning
+            path = nn(nodes)
+
+            # plot path
+            for k in range(len(path) - 1):
+                s = path[k]
+                e = path[k + 1]
+                color_image = cv2.line(color_image, (s[0], s[1]), (e[0], e[1]), color=(0, 0, 255), thickness=2)
 
             # Show images
             cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
@@ -93,20 +127,6 @@ try:
             # cv2.imshow('RealSense', red_image)
             cv2.waitKey(1)
 
-        # depth_colormap_dim = depth_colormap.shape
-        color_colormap_dim = color_image.shape
-
-        # one_dim = np.ones([color_colormap_dim[0], color_colormap_dim[1], 1])
-        # red_image = np.concatenate((168 * one_dim, 50 * one_dim, 50 * one_dim), axis=2)
-
-        # detect the edge of working area
-        edges = cv2.Canny(color_image, 60, 180)
-
-        # # Show images
-        # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-        # cv2.imshow('RealSense', img)
-        # # cv2.imshow('RealSense', red_image)
-        # cv2.waitKey(1)
 
 finally:
 

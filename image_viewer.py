@@ -9,6 +9,7 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 import random
+from Motion_Panning_Algorithms.NearstNeighbors import nearst_neighbor_planning as nn
 
 color_frame = cv2.imread("/home/kejia/Cognitive-Wiping-Robot/ipad_input.jpg")
 
@@ -63,46 +64,36 @@ if contours:
     draw_contours = contours[:]  # contours are stains to be cleaned
     # draw_contours.append(max_cnt)
 
-    # Motion Planning
     nodes = []
-
+    # start position
     start_x = random.randint(0, color_image_dim[0])
     start_y = random.randint(0, color_image_dim[1])
     nodes.append(np.array([start_x, start_y]))
-    color_image = cv2.circle(color_image, (start_x, start_y), radius=0, color=(0, 0, 255), thickness=5)
+    color_image = cv2.circle(color_image, (start_x, start_y), radius=0, color=(255, 0, 0), thickness=7)
 
-    # primitive idea: Dijkstra
+    # stain centers as nodes
     for cnt in contours:
         M = cv2.moments(cnt)
         cx = int(M['m10'] / M['m00'])
         cy = int(M['m01'] / M['m00'])
         nodes.append(np.array([cx, cy]))
-        color_image = cv2.circle(color_image, (cx, cy), radius=0, color=(0, 0, 255), thickness=5)
+        color_image = cv2.circle(color_image, (cx, cy), radius=0, color=(0, 0, 255), thickness=7)
 
     for u in nodes:
         print("node: ", u)
 
-# Show images
+    # motion planning
+    path = nn(nodes)
+
+    # plot path
+    for k in range(len(path)-1):
+        s = path[k]
+        e = path[k+1]
+        color_image = cv2.line(color_image, (s[0], s[1]),  (e[0], e[1]), color=(0, 0, 255), thickness=2)
+
+    # Show images
     cv2.drawContours(color_image, draw_contours, -1, (0, 255, 0), 3)
     cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
     cv2.imshow('RealSense', color_image)
     # cv2.imshow('RealSense', red_image)
     cv2.waitKey(0)
-
-    color_colormap_dim = color_image.shape
-
-    # Motion Planning
-    nodes = []
-
-    # start_position =
-    # nodes.append(start_position)
-    # primitive idea: Dijkstra
-    for cnt in contours:
-        M = cv2.moments(cnt)
-        cx = int(M['m10'] / M['m00'])
-        cy = int(M['m01'] / M['m00'])
-        nodes.append(np.array([cx, cy]))
-        color_image = cv2.circle(color_image, (cx, cy), radius=0, color=(0, 0, 255), thickness=-1)
-
-    for u in nodes:
-        print("node: ", u)

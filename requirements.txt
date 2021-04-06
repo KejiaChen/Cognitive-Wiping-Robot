@@ -1,4 +1,6 @@
-opencv-python==4.5.1
+opencv-python==4.5.1.48
 numpy==1.20.1
-matplotlib
-scipy
+matplotlib==3.4.0
+scipy==1.6.2
+Dijkstar==2.6.0
+dijkstra==0.2.1

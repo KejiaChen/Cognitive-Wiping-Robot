@@ -4,9 +4,16 @@
 Install Intel® RealSense™ SDK 2.0 following [official instruction](https://github.com/IntelRealSense/librealsense/blob/development/doc/distribution_linux.md)
 ### Environment
 This project uses python 3.7. To install required packages:
-```pip install -r requirements.txt```
+```
+pip install -r requirements.txt
+```
 
 ## Cognition
+To detect stains and plan the motion of the end-effector:
+```
+python viewer.py
+```
+
 ### Detect the Working area
 Detect the largest [contour](https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_contours/py_contour_features/py_contour_features.html) ```max_cnt``` as working area.
 Optionally: 

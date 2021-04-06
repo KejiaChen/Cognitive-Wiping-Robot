@@ -129,3 +129,5 @@ dmypy.json
 .pyre/
 
 .idea/
+conda_requirement.txt
+pip_requirement.txt

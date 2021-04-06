@@ -1,6 +1,10 @@
 # Cognitive-Wiping-Robot
-## Camera Setup
+## Setup
+### Library for camera
 Install Intel® RealSense™ SDK 2.0 following [official instruction](https://github.com/IntelRealSense/librealsense/blob/development/doc/distribution_linux.md)
+### Environment
+This project uses python 3.7. To install required packages:
+```pip install -r requirements.txt```
 
 ## Cognition
 ### Detect the Working area

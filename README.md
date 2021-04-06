@@ -25,7 +25,6 @@ Reserve only contours inside ```max_cnt``` as stains to be cleaned. Add centers 
 
 [<img src="RealSense_Detect.png" width="400px"/>](RealSense_Detect.png)
 
-
 ## Motion Planning
 The task of passing all the nodes is formed as a [Traveling Salesman Problem](https://en.wikipedia.org/wiki/Travelling_salesman_problem#As_a_graph_problem), and will be solved by following algorithms.
 ### Nearst Neighbors
@@ -33,5 +32,8 @@ Starting from the initial position (current position of end effector, marked as 
 
 [<img src="RealSense_Planning.png" width="400px"/>](RealSense_Planning.png)
 
-
 ### Ant colony optimization
+
+## Demo
+[<img src="demo.gif" width="400px"/>](demo.gif)
+

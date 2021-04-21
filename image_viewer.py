@@ -159,7 +159,7 @@ class Cognition():
             # # cv2.imshow('RealSense', red_image)
             # cv2.waitKey(0)
 
-            path, travelled_dst = motion_planner.ant_colony()
+            path, travelled_dst = motion_planner.nearst_neighbor_planning()
 
             print("path planned")
 
@@ -169,7 +169,7 @@ class Cognition():
                 s = path[k]
                 e = path[k + 1]
                 mask_image_2 = cv2.line(mask_image_2, (s[0], s[1]), (e[0], e[1]), color=(255, 0, 0),
-                                        thickness=self.radius + 5)
+                                        thickness=2*self.radius)
 
             alpha = 0.3
             cover_img = cv2.addWeighted(mask_image_2, alpha, self.img, 1 - alpha, 0)
@@ -199,6 +199,6 @@ if __name__ == "__main__":
     cv2.rectangle(img=color_image, pt1=(x, y), pt2=(x + w, y + h), color=(0, 0, 255), thickness=2)
     color_image = color_image[y:y + h, x:x + w]
 
-    viewer = Cognition(image=color_image, radius=5)
+    viewer = Cognition(image=color_image, radius=10)
 
     viewer.run()

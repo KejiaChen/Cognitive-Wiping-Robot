@@ -30,7 +30,7 @@ Option 1: Bounding rectangles can be used instead of contours.
 
 However, the size of rectangular kernel needs to be set manually to get a suitable bounding rectangle.
 
-### Covering SP: 
+### Covering SP
 The wiping task can be formed as a [Covering Traveling Salesman Problem](https://www.scirp.org/journal/paperinformation.aspx?paperid=77781). To guarantee that the cleaner will pass each pixel of stains, each point on contours ```c``` is checked if it lies within an e-neighborhood of current nodes, where the value of e depends on the size of the tool (e.g. radius of the brush) used to accomplish the task. If not, ```c```  is added to the node_list.
 
 [<img src="img/nodes_words.png" width="400px"/>](nodes_words.png)

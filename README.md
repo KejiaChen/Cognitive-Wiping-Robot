@@ -20,9 +20,9 @@ Optionally:
 - Detect the contour of largest white area.
 
 ### Detect the stains
-Default: Reserve only contours inside ```max_cnt``` as stains to be cleaned. Add centers of all contours (marked as red) as nodes for planning algorithms.
+Default: Reserve only contours inside ```max_cnt``` as stains to be cleaned. 
 
-[<img src="img/RealSense_Detect.png" width="400px"/>](RealSense_Detect.png)
+[<img src="contour_words.png" width="400px"/>](contour_words.png)
 
 Option 1: Bounding rectangles can be used instead of contours.
 
@@ -43,7 +43,7 @@ The task of passing all the nodes is then formed as a [Traveling Salesman Proble
 ### Nearst Neighbors
 Starting from the initial position (current position of end effector, marked as blue), select the nearst node to be the next move.
 
-[<img src="img/RealSense_Planning.png" width="400px"/>](RealSense_Planning.png)
+[<img src="img/planned_path_nn_words.png" width="400px"/>](planned_path_nn_words.png)
 
 ### Dynamic Programming
 The path is planned by dynamic programming. However, the computation time is relatively long.
@@ -57,7 +57,7 @@ Path planned with neighborhood radius ```e=10```:
 
 Path planned with neighborhood radius ```e=5```:
 
-[<img src="planned_path_acs_words_radius_5.png" width="400px"/>](planned_path_acs_words_radius_5.png)
+[<img src="img/planned_path_acs_words_radius_5.png" width="400px"/>](planned_path_acs_words_radius_5.png)
 
 
 ## Demo

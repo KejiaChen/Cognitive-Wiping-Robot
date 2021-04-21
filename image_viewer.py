@@ -70,8 +70,8 @@ class Cognition():
                 cx = int(M['m10'] / M['m00'])
                 cy = int(M['m01'] / M['m00'])
 
-                if mask[cx, cy] == 0:
-                    rr, cc = disk((cx, cy), self.radius, shape=shape)
+                if mask[cy, cx] == 0:
+                    rr, cc = disk((cy, cx), self.radius, shape=shape)
                     mask[rr, cc] = 1
                     mask_image_1 = cv2.circle(mask_image_1, (cx, cy), radius=self.radius, color=(0, 255, 0),
                                               thickness=-1)
@@ -127,6 +127,13 @@ class Cognition():
             draw_contours = self.contours[:]  # draw all the contours including max_cnt
             self.contours.pop(-1)  # max_cnt excluded
             self.contours.pop(-1)
+
+            # # Show images
+            # cv2.drawContours(self.img, draw_contours, -1, (0, 255, 0), 3)
+            # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+            # cv2.imshow('RealSense', self.img)
+            # # cv2.imshow('RealSense', red_image)
+            # cv2.waitKey(0)
 
             nodes = self.list_nodes()
 

@@ -22,7 +22,7 @@ Optionally:
 ### Detect the stains
 Default: Reserve only contours inside ```max_cnt``` as stains to be cleaned. 
 
-[<img src="contour_words.png" width="400px"/>](contour_words.png)
+[<img src="img/contour_words.png" width="400px"/>](contour_words.png)
 
 Option 1: Bounding rectangles can be used instead of contours.
 

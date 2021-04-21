@@ -1,27 +1,51 @@
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
+import networkx as nx
 from dijkstar import Graph, find_path
 from scipy.spatial import distance_matrix
+from sko.ACA import ACA_TSP
 
-realmax = 500
+
+realmax = 10000
+medmax = 500
 
 
 class Planner(object):
     """
     Integration of all planning algorithms
     """
-    def __init__(self, nodes):
+    def __init__(self, nodes, general=True, k=5, r=30):
         self.nodes = nodes
+        self.num_nodes = len(self.nodes)
         # distance matrix
         dst_matrix = distance_matrix(self.nodes, self.nodes, p=2, threshold=1000000)
         self.dst = dst_matrix
         self.dst[dst_matrix == 0] = realmax
 
+        self.graph = nx.Graph()
+        self.graph.add_nodes_from(range(len(self.nodes)))
+        for i in range(0, len(nodes)):
+            # self.graph.add_weighted_edges_from([(0, i, dst_matrix[0][i])])
+            dst_array = list(dst_matrix[i][:])
+            # index_array = np.arange(len(nodes))
+            # sort_array = np.concatenate((dst_array, index_array), axis=0)
+            sort_array = dst_array[:]
+            sort_array.sort()
+            for j in range(k):
+                if i >= 1 and sort_array[j] > r:
+                    break
+                else:
+                    idx = dst_array.index(sort_array[j])
+                    self.graph.add_weighted_edges_from([(i, idx, sort_array[j])])
+
         self.vision = 1./self.dst
         self.vision[dst_matrix == 0] = realmax
 
         self.start = self.nodes[0]
+
+    def get_cost_graph(self):
+        return self.graph
 
     def nearst_neighbor_planning(self):
         temp_nodes = self.nodes[:]
@@ -39,9 +63,40 @@ class Planner(object):
             self.dst[:, current_idx] = realmax
             current_idx = next_idx
 
-        # for p in path:
-        #     print("path:", p)
+        for p in path:
+            print("path:", p)
 
+        return path, travelled_dst
+
+    def nearst_neighbor_planning_graph(self):
+        path = [self.start]
+        travelled_dst = 0
+        n = 0
+        temp_nodes = list(range(len(self.nodes)))
+        temp_nodes.remove(n)
+
+        while temp_nodes is not []:
+        # for i in range(len(temp_nodes) - 1):
+            nbrs = self.graph.adj[n]
+            min_dist = realmax
+            next_n = n
+            for nbr, eattr in nbrs.items():
+                wt = eattr['weight']
+                if wt < min_dist:
+                    next_n = nbr
+                    min_dist = wt
+                self.graph[n][nbr]['weight'] = wt + medmax
+                self.graph[nbr][n]['weight'] = wt + medmax
+
+            print((n, next_n))
+            # self.graph[n][next_n]['weight'] = realmax
+            # self.graph[next_n][n]['weight'] = realmax
+            path.append(self.nodes[next_n])
+            travelled_dst = travelled_dst + min_dist
+
+            if next_n in temp_nodes:
+                temp_nodes.remove(next_n)
+            n = next_n
         return path, travelled_dst
 
     def dynamic_programming_ref(self):
@@ -141,6 +196,23 @@ class Planner(object):
 
         return path, travelled_dst
 
+    def ant_colony(self, pop=70, num_iter=200):
+        dst_matrix = self.dst
+        path = []
+
+        def cal_total_distance(routine):
+            num_points, = routine.shape
+            return sum([dst_matrix[routine[i % num_points], routine[(i + 1) % num_points]] for i in range(num_points)])
+
+        aca = ACA_TSP(func=cal_total_distance, n_dim=self.num_nodes,
+                      size_pop=pop, max_iter=num_iter,
+                      distance_matrix=self.dst)
+
+        path_index, travelled_dst = aca.run()
+
+        for i in path_index:
+            path.append(self.nodes[i])
+        return path, travelled_dst
 
     def dijkstra_planning(self):
         graph = Graph()

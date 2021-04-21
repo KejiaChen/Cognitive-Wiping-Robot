@@ -9,91 +9,189 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 import random
-from Motion_Panning_Algorithms.NearstNeighbors import nearst_neighbor_planning as nn
+from sklearn.neighbors import RadiusNeighborsClassifier
+from skimage.draw import disk
 
-color_frame = cv2.imread("/home/kejia/Cognitive-Wiping-Robot/ipad_input.jpg")
+from Motion_Panning_Algorithms.Planner import Planner
 
-color_image = np.asanyarray(color_frame)
-color_colormap_dim = color_image.shape
-color_image = cv2.resize(color_image, dsize=(int(color_colormap_dim[1]/2), int(color_colormap_dim[0]/2)), interpolation=cv2.INTER_AREA)
 
-# select region of interest
-roi = cv2.selectROI(windowName="roi", img=color_image, showCrosshair=True, fromCenter=False)
-x, y, w, h = roi
-cv2.rectangle(img=color_image, pt1=(x, y), pt2=(x + w, y + h), color=(0, 0, 255), thickness=2)
-color_image = color_image[y:y + h, x:x + w]
+class Cognition():
+    def __init__(self,
+                 image,
+                 radius=10,
+                 planner_k=15,
+                 planner_r=50):
+        self.img = image
+        color_image_dim = self.img.shape
+        self.gray_img = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
+        temp_gray_img = self.gray_img[:]
+        gray_img_dim = self.gray_img.shape
+        # TODO: hsv
 
-# cv2.imshow('img', color_image)
-# cv2.waitKey(0)
+        self.radius = radius
 
-gray_img = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
+        ret, thresh = cv2.threshold(self.gray_img, 127, 255, cv2.THRESH_BINARY_INV)
+        # ret, thresh = cv2.threshold(gray_img, 127, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-ret, thresh = cv2.threshold(gray_img, 127, 255, 0)
-contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-# print("length of contours", len(contours))
+        black_points = np.nonzero(thresh)
 
-color_image_dim = color_image.shape
+        # Specify structure shape and kernel size.
+        # Kernel size increases or decreases the area
+        # of the rectangle to be detected.
+        rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        # Appplying dilation on the threshold image
+        dilation = cv2.dilate(thresh, rect_kernel, iterations=1)
 
-if contours:
-    # cv2.drawContours(gray_img, contours, -1, (0, 255, 0), 3)
-    # plot largest contour
-    max_cnt = np.array(sorted(contours, key=cv2.contourArea)[-1])
-    # cv2.drawContours(color_image, max_cnt, -1, (0, 0, 255), 3)
+        self.contours, self.hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Optional: plot rectangular contour
-    # rect = cv2.minAreaRect(max_cnt)
-    # box = cv2.boxPoints(rect)
-    # box = np.int0(box)
-    # gray_img = cv2.drawContours(gray_img, [box], 0, (0, 0, 255), 2)
+        # planner
+        self.pk = planner_k
+        self.pr = planner_r
 
-    # x, y, w, h = cv2.boundingRect(max_cnt)
-    # color_image = cv2.rectangle(color_image, (x, y), (x + w, y + h), (255, 0, 0), 2)
+    def list_nodes(self):
+        node_list = []
+        # start position
+        # start_x = random.randint(0, color_image_dim[0])
+        # start_y = random.randint(0, color_image_dim[1])
+        start_x = 225
+        start_y = 195
+        node_list.append(np.array([start_x, start_y]))
+        self.img = cv2.circle(self.img, (start_x, start_y), radius=0, color=(255, 0, 0), thickness=7)
 
-    # TODO: plot largest contour on white color
+        # stain centers as nodes
+        # radius = 10
+        shape = self.gray_img.shape
+        mask = np.zeros_like(self.gray_img)
+        mask_image_1 = self.img.copy()
+        for cnt in self.contours:
+            M = cv2.moments(cnt)
+            if M['m00']:
+                cx = int(M['m10'] / M['m00'])
+                cy = int(M['m01'] / M['m00'])
 
-    # only work on the contours inside max_cnt
-    temp_contours = contours[:]
-    for i in range(len(temp_contours)-1, -1, -1):
-        cnt = temp_contours[i]
-        for j in range(len(cnt)):
-            point = cnt[j]
-            if cv2.pointPolygonTest(max_cnt, (point[0][0], point[0][1]), False) == -1.0:
-                contours.pop(i)
-                break
+                if mask[cx, cy] == 0:
+                    rr, cc = disk((cx, cy), self.radius, shape=shape)
+                    mask[rr, cc] = 1
+                    mask_image_1 = cv2.circle(mask_image_1, (cx, cy), radius=self.radius, color=(0, 255, 0),
+                                              thickness=-1)
+                    node_list.append(np.array([cx, cy]))
+                    self.img = cv2.circle(self.img, (cx, cy), radius=0, color=(0, 0, 255), thickness=3)
 
-    draw_contours = contours[:]  # contours are stains to be cleaned
-    # draw_contours.append(max_cnt)
+                for j in range(len(cnt)):
+                    point = cnt[j]
+                    # center_x = cx
+                    # center_y = cy
+                    while mask[point[0][1], point[0][0]] == 0:
+                        # center_x = int((point[0][0] + center_x) / 2)
+                        # center_y = int((point[0][1] + center_y) / 2)
+                        # rr, cc = disk((center_x, center_y), radius)
+                        rr, cc = disk((point[0][1], point[0][0]), self.radius, shape=shape)
+                        mask[rr, cc] = 1
+                        mask_image_1 = cv2.circle(mask_image_1, (point[0][0], point[0][1]), radius=self.radius,
+                                                  color=(0, 255, 0), thickness=-1)
+                        node_list.append(np.array([point[0][0], point[0][1]]))
+                        self.img = cv2.circle(self.img, (point[0][0], point[0][1]), radius=0, color=(0, 0, 255),
+                                                 thickness=3)
 
-    nodes = []
-    # start position
-    start_x = random.randint(0, color_image_dim[0])
-    start_y = random.randint(0, color_image_dim[1])
-    nodes.append(np.array([start_x, start_y]))
-    color_image = cv2.circle(color_image, (start_x, start_y), radius=0, color=(255, 0, 0), thickness=7)
+        for u in node_list:
+            print("node: ", u)
 
-    # stain centers as nodes
-    for cnt in contours:
-        M = cv2.moments(cnt)
-        cx = int(M['m10'] / M['m00'])
-        cy = int(M['m01'] / M['m00'])
-        nodes.append(np.array([cx, cy]))
-        color_image = cv2.circle(color_image, (cx, cy), radius=0, color=(0, 0, 255), thickness=7)
+        # alpha = 0.3
+        # self.img = cv2.addWeighted(mask_image_1, alpha, self.img, 1 - alpha, 0)
+        # # cv2.drawContours(color_image, draw_contours, -1, (0, 255, 0), 1)
+        # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+        # cv2.imshow('RealSense', self.img)
+        # # cv2.imshow('RealSense', red_image)
+        # cv2.waitKey(0)
 
-    for u in nodes:
-        print("node: ", u)
+        return node_list
 
-    # motion planning
-    path = nn(nodes)
+    def run(self):
+        if self.contours:
+            # Default: bounding contour
+            self.contours = sorted(self.contours, key=cv2.contourArea)
+            max_cnt = np.array(sorted(self.contours, key=cv2.contourArea)[-1])
+            # cv2.drawContours(color_image, max_cnt, -1, (0, 0, 255), 3)
 
-    # plot path
-    for k in range(len(path)-1):
-        s = path[k]
-        e = path[k+1]
-        color_image = cv2.line(color_image, (s[0], s[1]),  (e[0], e[1]), color=(0, 0, 255), thickness=2)
+            # only work on the contours/rectangles inside max_cnt
+            temp_contours = self.contours[:]
+            for i in range(len(temp_contours) - 1, -1, -1):
+                cnt = temp_contours[i]
+                for j in range(len(cnt)):
+                    point = cnt[j]
+                    if cv2.pointPolygonTest(max_cnt, (point[0][0], point[0][1]), False) == -1.0:
+                        self.contours.pop(i)
+                        break
 
-    # Show images
-    cv2.drawContours(color_image, draw_contours, -1, (0, 255, 0), 3)
-    cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-    cv2.imshow('RealSense', color_image)
-    # cv2.imshow('RealSense', red_image)
-    cv2.waitKey(0)
+            draw_contours = self.contours[:]  # draw all the contours including max_cnt
+            self.contours.pop(-1)  # max_cnt excluded
+            self.contours.pop(-1)
+
+            nodes = self.list_nodes()
+
+            # motion planning
+            motion_planner = Planner(nodes, k=self.pk, r=self.pr)
+            # plot cost graph
+            G = motion_planner.get_cost_graph()
+
+            for n, nbrs in G.adj.items():
+                for nbr, eattr in nbrs.items():
+                    wt = eattr['weight']
+                    node = nodes[n]
+                    adj_node = nodes[nbr]
+                    # color_image = cv2.line(color_image, (node[0], node[1]), (adj_node[0], adj_node[1]), color=(0, 255, 0),thickness=1)
+
+            # alpha = 0.3
+            # cover_img = cv2.addWeighted(mask_image_1, alpha, color_image, 1 - alpha, 0)
+
+            # Show images
+            # cv2.drawContours(color_image, draw_contours, -1, (0, 255, 0), 3)
+            # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+            # cv2.imshow('RealSense', color_image)
+            # # cv2.imshow('RealSense', red_image)
+            # cv2.waitKey(0)
+
+            path, travelled_dst = motion_planner.ant_colony()
+
+            print("path planned")
+
+            # plot path
+            mask_image_2 = self.img.copy()
+            for k in range(len(path) - 1):
+                s = path[k]
+                e = path[k + 1]
+                mask_image_2 = cv2.line(mask_image_2, (s[0], s[1]), (e[0], e[1]), color=(255, 0, 0),
+                                        thickness=self.radius + 5)
+
+            alpha = 0.3
+            cover_img = cv2.addWeighted(mask_image_2, alpha, self.img, 1 - alpha, 0)
+
+            # Show images
+            # cv2.drawContours(color_image, draw_contours, -1, (0, 255, 0), 3)
+            cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+            cv2.imshow('RealSense', cover_img)
+            # cv2.imshow('RealSense', red_image)
+            cv2.waitKey(0)
+
+
+if __name__ == "__main__":
+    real_max = 500
+
+    color_frame = cv2.imread("/home/kejia/Cognitive-Wiping-Robot/static_image_input/ipad_input_words.jpg")
+
+    color_image = np.asanyarray(color_frame)
+    color_colormap_dim = color_image.shape
+    color_image = cv2.resize(color_image, dsize=(int(color_colormap_dim[1] / 2), int(color_colormap_dim[0] / 2)),
+                             interpolation=cv2.INTER_AREA)
+    original_image = color_image
+
+    # select region of interest
+    roi = cv2.selectROI(windowName="roi", img=color_image, showCrosshair=True, fromCenter=False)
+    x, y, w, h = roi
+    cv2.rectangle(img=color_image, pt1=(x, y), pt2=(x + w, y + h), color=(0, 0, 255), thickness=2)
+    color_image = color_image[y:y + h, x:x + w]
+
+    viewer = Cognition(image=color_image, radius=5)
+
+    viewer.run()

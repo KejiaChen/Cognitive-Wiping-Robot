@@ -9,7 +9,7 @@ import pyrealsense2 as rs
 import numpy as np
 import cv2
 import random
-from Motion_Panning_Algorithms.NearstNeighbors import nearst_neighbor_planning as nn
+from Motion_Panning_Algorithms.Ant_Colony import nearst_neighbor_planning as nn
 
 # Configure depth and color streams
 pipeline = rs.pipeline()
@@ -52,8 +52,15 @@ try:
 
         gray_img = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
 
-        ret, thresh = cv2.threshold(gray_img, 127, 255, 0)
-        contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # ret, thresh = cv2.threshold(gray_img, 127, 255, 0)
+        ret, thresh = cv2.threshold(gray_img, 0, 255, cv2.THRESH_OTSU | cv2.THRESH_BINARY_INV)
+        # Specify structure shape and kernel size.
+        rect_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+        # Appplying dilation on the threshold image
+        dilation = cv2.dilate(thresh, rect_kernel, iterations=1)
+
+        contours, hierarchy = cv2.findContours(dilation, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
         # print("length of contours", len(contours))
 
         color_image_dim = color_image.shape

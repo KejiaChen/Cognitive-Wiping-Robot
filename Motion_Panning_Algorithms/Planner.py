@@ -26,18 +26,23 @@ class Planner(object):
         self.graph = nx.Graph()
         self.graph.add_nodes_from(range(len(self.nodes)))
         for i in range(0, len(nodes)):
-            # self.graph.add_weighted_edges_from([(0, i, dst_matrix[0][i])])
-            dst_array = list(dst_matrix[i][:])
-            # index_array = np.arange(len(nodes))
-            # sort_array = np.concatenate((dst_array, index_array), axis=0)
-            sort_array = dst_array[:]
-            sort_array.sort()
-            for j in range(k):
-                if i >= 1 and sort_array[j] > r:
-                    break
-                else:
-                    idx = dst_array.index(sort_array[j])
-                    self.graph.add_weighted_edges_from([(i, idx, sort_array[j])])
+            if general:
+                # self.graph.add_weighted_edges_from([(0, i, dst_matrix[0][i])])
+                dst_array = list(dst_matrix[i][:])
+                # index_array = np.arange(len(nodes))
+                # sort_array = np.concatenate((dst_array, index_array), axis=0)
+                sort_array = dst_array[:]
+                sort_array.sort()
+                for j in range(k):
+                    if i >= 1 and sort_array[j] > r:
+                        break
+                    else:
+                        idx = dst_array.index(sort_array[j])
+                        self.graph.add_weighted_edges_from([(i, idx, sort_array[j])])
+            else:
+                for j in range(0, len(nodes)):
+                    if i != j:
+                        self.graph.add_weighted_edges_from([(i, j, dst_matrix[i][:])])
 
         self.vision = 1./self.dst
         self.vision[dst_matrix == 0] = realmax

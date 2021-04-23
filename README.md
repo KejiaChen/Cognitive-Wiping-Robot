@@ -14,10 +14,11 @@ pip install -r requirements.txt
 
 ## Cognition
 ### Detect the Working area
-Detect the largest [contour](https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_contours/py_contour_features/py_contour_features.html) ```max_cnt``` as working area.
+Choose region of interest manually as working area. In this case, the largest [contour](https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_imgproc/py_contours/py_contour_features/py_contour_features.html) ```max_cnt``` is usually the bounding rectangular of RoI.
 Optionally: 
+- Detect the largest contour ```max_cnt``` or
 - Detect the bounding rectangular or
-- Detect the contour of largest white area.
+- Detect the contour of largest white area as working area..
 
 ### Detect the stains
 Default: Reserve only contours inside ```max_cnt``` as stains to be cleaned. 
@@ -61,16 +62,20 @@ Path planned with neighborhood radius ```e=5```:
 
 
 ## Demo
-To detect stains and plan the motion of the end-effector:
+To detect stains and plan the path of the end-effector:
 ```
 python viewer.py
 ```
-[<img src="img/demo.gif" width="400px"/>](demo.gif)
+[<img src="img/nn_planning_demo.gif" width="400px"/>](nn_demo.gif)
+
+As is shown in the demo, the RoI is firstly selected as the working area. The planned path (marked as blue shadow) is always able to cover all the words.
+
+Note that this demo uses Nearst Neighbor as planning algorithm. For more complex algorithms like Dynamic Programming and Ant Colony, real-time planning and response are not possible.
 
 ## Next Step
 ### Undirected Graph
 Results above were obatined under the assumption that nodes are all connected to each other. This guarantees that a path will be found, but also leads to computational burdens in planning. To speed up the planning process, a graph G=(V,E) is constructed following steps in [J.Hess2012](https://ieeexplore.ieee.org/abstract/document/6385960). 
-Each node is only connected to top k nearest neighbors within a radius r. In this way, number of edges to be explored is cut down.
+Each node is only connected to top k (default 5) nearest neighbors within a radius r (default 30). In this way, number of edges to be explored is cut down.
 
 [<img src="img/graph_words.png" width="400px"/>](graph_words.png)
 

@@ -46,15 +46,23 @@ Starting from the initial position (current position of end effector, marked as 
 
 [<img src="img/planned_path_nn_words.png" width="400px"/>](planned_path_nn_words.png)
 
+The computation for nn is quite efficient, but the path is obviously not optimal:
+
+[<img src="img/graph_nn_computation.png" width="400px"/>](compute_nn.png)
+
 ### Dynamic Programming
 The path is planned by dynamic programming. However, the computation time is relatively long.
 
 ### Ant Colony Algorithm
-The path is planned by ant colony algorithm. Area covered by the brush along the path is marked as blue shadow.
+The path is planned by ant colony algorithm. Area covered by the brush along the path is marked as blue shadow. Here the population is set as 50 and it runs for 200 iterations.
 
 Path planned with neighborhood radius ```e=10```:
 
 [<img src="img/planned_path_acs_words.png" width="400px"/>](planned_path_acs_words.png)
+
+The computation for ac takes longer, but the resulted path is also more cost-efficient:
+
+[<img src="img/graph_ac_false_computation.png" width="400px"/>](compute_ac_false.png)
 
 Path planned with neighborhood radius ```e=5```:
 
@@ -72,12 +80,34 @@ As is shown in the demo, the RoI is firstly selected as the working area. The pl
 
 Note that this demo uses Nearst Neighbor as planning algorithm. For more complex algorithms like Dynamic Programming and Ant Colony, real-time planning and response are not possible.
 
-## Next Step
+## Next Step & Discussion
 ### Undirected Graph
-Results above were obatined under the assumption that nodes are all connected to each other. This guarantees that a path will be found, but also leads to computational burdens in planning. To speed up the planning process, a graph G=(V,E) is constructed following steps in [J.Hess2012](https://ieeexplore.ieee.org/abstract/document/6385960). 
-Each node is only connected to top k (default 5) nearest neighbors within a radius r (default 30). In this way, number of edges to be explored is cut down.
+Results above were obatined under the assumption that nodes are all connected to each other. This guarantees that a path will be found, but also leads to computational burdens in planning. To speed up the planning process, a graph G=(V,E) is constructed following steps in [J.Hess2012](https://ieeexplore.ieee.org/abstract/document/6385960). The idea is that each node is only connected to top k nearest neighbors within a radius r. In this way, number of edges to be explored is supposed to be cut down. Below is the graph constructed with ```k=5``` and ```r=30```.
 
 [<img src="img/graph_words.png" width="400px"/>](graph_words.png)
+
+Below, two attempts to implement the planning based on this idea are introduced.
+
+#### 1. Modify the distance matrix
+An intuitive method is to modify the distance matrix. The entries(costs) that corresponde to unconnected edges are changed into some extremely large numbers. In this way, these edges will not (possibly) chosen by the planning algorithm.
+
+The path planned by graph-based ant colony algorihtm with ```k=10``` and ```r=70```:
+
+[<img src="img/graph_ac_k_10_r_70.png" width="400px"/>](path_ac_k_10_r_70.png)
+
+[<img src="img/graph_ac_k_10_r_70_computation.png" width="400px"/>](compute_ac_k_10_r_70.png)
+
+and with ```k=20``` and ```r=70```:
+
+[<img src="img/graph_ac_k_20_r_70.png" width="400px"/>](path_ac_k_20_r_70.png)
+
+[<img src="img/graph_ac_k_20_r_70_computation.png" width="400px"/>](compute_ac_k_20_r_70.png)
+
+As is shown in the screenshots above, tuning k and r has the potential to find a slight more cost-efficient path. However, this method did not descrease the number of iterations in the algorithm, and thus cannot really speed up the computation. 
+
+#### 2. Graph-based planning
+At each node, graph-based path planning will ignore the unconnected nodes, i.e. only interate over the nodes adjecent to it in the graph. However, as each node is only allowed to be visited once, this method usually fails in finding a valid path.
+
 
 ### Joint GTSP
 

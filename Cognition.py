@@ -12,6 +12,7 @@ import copy
 import random
 from skimage.draw import disk
 from Motion_Panning_Algorithms.Planner import Planner
+import time
 
 
 class Cognition():
@@ -19,6 +20,8 @@ class Cognition():
                  image,
                  streaming=0,
                  radius=10,
+                 general=False,
+                 planner='nn',
                  planner_k=15,
                  planner_r=50):
         self.stream = streaming
@@ -46,7 +49,11 @@ class Cognition():
 
         self.contours, self.hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
+        # whether to build undirected graph (speed up for ant colony)
+        self.build_graph = general
+
         # planner
+        self.planner = planner
         self.pk = planner_k
         self.pr = planner_r
 
@@ -139,7 +146,7 @@ class Cognition():
             nodes = self.list_nodes()
 
             # motion planning
-            motion_planner = Planner(nodes, k=self.pk, r=self.pr)
+            motion_planner = Planner(nodes, general=self.build_graph, k=self.pk, r=self.pr)
             # plot cost graph
             G = motion_planner.get_cost_graph()
 
@@ -149,7 +156,9 @@ class Cognition():
                     wt = eattr['weight']
                     node = nodes[n]
                     adj_node = nodes[nbr]
-                    graph_img = cv2.line(graph_img, (node[0], node[1]), (adj_node[0], adj_node[1]), color=(0, 255, 0), thickness=1)
+                    self.img = cv2.line(self.img, (node[0], node[1]), (adj_node[0], adj_node[1]), color=(0, 255, 0),
+                                         thickness=1)
+                    # graph_img = cv2.line(graph_img, (node[0], node[1]), (adj_node[0], adj_node[1]), color=(0, 255, 0), thickness=1)
 
             # alpha = 0.3
             # cover_img = cv2.addWeighted(mask_image_1, alpha, color_image, 1 - alpha, 0)
@@ -161,15 +170,24 @@ class Cognition():
             # # cv2.imshow('RealSense', red_image)
             # cv2.waitKey(self.stream)
 
-            path, travelled_dst = motion_planner.nearst_neighbor_planning()
+            plan_start = time.time()
 
-            print("path planned")
+            if self.planner is "ac":
+                path, travelled_dst = motion_planner.ant_colony(pop=70, num_iter=200)
+            elif self.planner is "nn":
+                path, travelled_dst = motion_planner.nearst_neighbor_planning()
+            plan_end = time.time()
+
+            print("total distance:", travelled_dst)
+            print("planning time:", plan_end-plan_start)
 
             # plot path
             mask_image_2 = self.img.copy()
             for k in range(len(path) - 1):
                 s = path[k]
                 e = path[k + 1]
+                self.img = cv2.line(self.img, (s[0], s[1]), (e[0], e[1]), color=(0, 0, 255),
+                                        thickness=1)
                 mask_image_2 = cv2.line(mask_image_2, (s[0], s[1]), (e[0], e[1]), color=(255, 0, 0),
                                         thickness=2*self.radius)
 

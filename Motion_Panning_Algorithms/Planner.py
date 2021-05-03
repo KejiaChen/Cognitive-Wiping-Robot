@@ -5,7 +5,7 @@ import networkx as nx
 from dijkstar import Graph, find_path
 from scipy.spatial import distance_matrix
 from sko.ACA import ACA_TSP
-
+from Motion_Panning_Algorithms.Ant_Colony import ACA_TSP_Graph
 
 realmax = 10000
 medmax = 500
@@ -20,12 +20,16 @@ class Planner(object):
         self.num_nodes = len(self.nodes)
         # distance matrix
         dst_matrix = distance_matrix(self.nodes, self.nodes, p=2, threshold=1000000)
-        self.dst = dst_matrix
-        self.dst[dst_matrix == 0] = realmax
+        all_connected_dst = dst_matrix
+        # unable self transfer
+        all_connected_dst[dst_matrix == 0] = realmax
+        # initialize dst matrix
+        self.dst = realmax * np.ones_like(dst_matrix)
 
         self.graph = nx.Graph()
         self.graph.add_nodes_from(range(len(self.nodes)))
         for i in range(0, len(nodes)):
+            # A node is connected to top k nearest neighbors within a radius r
             if general:
                 # self.graph.add_weighted_edges_from([(0, i, dst_matrix[0][i])])
                 dst_array = list(dst_matrix[i][:])
@@ -39,13 +43,19 @@ class Planner(object):
                     else:
                         idx = dst_array.index(sort_array[j])
                         self.graph.add_weighted_edges_from([(i, idx, sort_array[j])])
+                        self.dst[i][idx] = sort_array[j]
+            # A node is connected to all the other nodes
             else:
                 for j in range(0, len(nodes)):
                     if i != j:
-                        self.graph.add_weighted_edges_from([(i, j, dst_matrix[i][:])])
+                        self.graph.add_weighted_edges_from([(i, j, dst_matrix[i][j])])
+                        self.dst[i][j] = dst_matrix[i][j]
 
-        self.vision = 1./self.dst
-        self.vision[dst_matrix == 0] = realmax
+        # self.vision = 1./self.dst
+        # self.vision[dst_matrix == 0] = realmax
+
+        # for travelled distance calculation
+        self.real_dst = dst_matrix
 
         self.start = self.nodes[0]
 
@@ -201,7 +211,7 @@ class Planner(object):
 
         return path, travelled_dst
 
-    def ant_colony(self, pop=70, num_iter=200):
+    def ant_colony(self, pop=50, num_iter=200):
         dst_matrix = self.dst
         path = []
 
@@ -213,10 +223,19 @@ class Planner(object):
                       size_pop=pop, max_iter=num_iter,
                       distance_matrix=self.dst)
 
-        path_index, travelled_dst = aca.run()
+        # aca = ACA_TSP_Graph(func=cal_total_distance, n_dim=self.num_nodes,
+        #                     size_pop=pop, max_iter=num_iter,
+        #                     distance_matrix=self.dst, graph=self.graph)
 
-        for i in path_index:
-            path.append(self.nodes[i])
+        path_index, path_dst = aca.run()
+
+        travelled_dst = 0
+        for i in range(len(path_index)):
+            idx = path_index[i]
+            path.append(self.nodes[idx])
+            if i >= 1:
+                former_idx = path_index[i-1]
+                travelled_dst = travelled_dst + self.real_dst[former_idx, idx]
         return path, travelled_dst
 
     def dijkstra_planning(self):

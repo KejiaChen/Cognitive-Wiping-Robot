@@ -14,7 +14,7 @@ from Cognition import Cognition
 if __name__ == "__main__":
     real_max = 500
 
-    color_frame = cv2.imread("/home/kejia/Cognitive-Wiping-Robot/static_image_input/ipad_input_words.jpg")
+    color_frame = cv2.imread("/home/kejia/wiping/Cognitive-Wiping-Robot/static_image_input/ipad_input_words.jpg")
 
     color_image = np.asanyarray(color_frame)
     color_colormap_dim = color_image.shape
@@ -28,6 +28,6 @@ if __name__ == "__main__":
     cv2.rectangle(img=color_image, pt1=(x, y), pt2=(x + w, y + h), color=(0, 0, 255), thickness=2)
     color_image = color_image[y:y + h, x:x + w]
 
-    viewer = Cognition(image=color_image, streaming=0, radius=10)
+    viewer = Cognition(image=color_image, streaming=0, radius=10, general=True, planner='nn', planner_k=10, planner_r=70)
 
     viewer.run()

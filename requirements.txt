@@ -4,3 +4,7 @@ matplotlib==3.4.0
 scipy==1.6.2
 Dijkstar==2.6.0
 dijkstra==0.2.1
+# for hand-eye calibration
+pyyaml
+pycryptodomex
+pycryptodome

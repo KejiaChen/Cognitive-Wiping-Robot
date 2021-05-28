@@ -19,8 +19,12 @@ CAMERA_INTRINSICS_MAT = np.array(
 # [[614.182, 0, 315.91], [0, 614.545, 244.167], [0, 0, 1]], dtype=np.float32)
 CAMERA_DISTORTION_COEFF_MAT = np.array([0, 0, 0, 0, 0], dtype=np.float32)
 ARUCO_NAME = cv2.aruco.DICT_4X4_50
-MARKER_SIDE_LENGTH_MM = 0.153
-MARKER_SEPRATION = MARKER_SIDE_LENGTH_MM/4
+SINGLE_MARKER_SIDE_LENGTH_MM = 0.153
+BOARD_MARKER_SIDE_LENGTH_MM = 0.045
+MARKER_SEPRATION = BOARD_MARKER_SIDE_LENGTH_MM/4
+cali_path = os.path.realpath(__file__)
+# print(cali_path)
+cali_dir, filename = os.path.split(cali_path)
 
 
 class HandEyeCalibration():
@@ -33,7 +37,8 @@ class HandEyeCalibration():
     def __init__(self, camera_intrinsics_mat, camera_distortion_coeff_mat, mode):
         self.cam_intr_mat = camera_intrinsics_mat
         self.cam_dist_coeff_mat = camera_distortion_coeff_mat
-        self.marker_side_length_mm = MARKER_SIDE_LENGTH_MM
+        self.single_marker_side_length_mm = SINGLE_MARKER_SIDE_LENGTH_MM
+        self.board_marker_side_length_mm = BOARD_MARKER_SIDE_LENGTH_MM
         self.marker_separation = MARKER_SEPRATION
         self.aruco_dict = cv2.aruco.Dictionary_get(ARUCO_NAME)
         self.detector_parameters = cv2.aruco.DetectorParameters_create()
@@ -119,31 +124,42 @@ class HandEyeCalibration():
         # If use a single marker
         if self.calibration_mode == 's':
             rot_vec, trans_vec, _ = cv2.aruco.estimatePoseSingleMarkers(
-                marker_corners, self.marker_side_length_mm, self.cam_intr_mat, self.cam_dist_coeff_mat)
+                marker_corners, self.board_marker_side_length_mm, self.cam_intr_mat, self.cam_dist_coeff_mat)
             # if rot_vec is not None && trans_vec is not None:
             # (rot_vec - trans_vec).any()  # get rid of that nasty numpy value array error
+            centers = []
+            center_file = os.path.join(cali_dir, '9_point_board_cam.txt')
+            for corner in marker_corners:
+                center = np.mean(corner, axis=1)
+                centers.append(center)
+                with open(center_file, 'a') as c_f:
+                    c_f.write('%s\n' % center)
+            print(centers)
             cv2.aruco.drawDetectedMarkers(image, marker_corners)  # Draw A square around the markers
-            # cv2.aruco.drawAxis(image, self.cam_intr_mat, self.cam_dist_coeff_mat, rot_vec, trans_vec, 0.01)  # Draw axis
+            for m in range(rot_vec.shape[0]):
+                r = rot_vec[m]
+                t = trans_vec[m]
+                cv2.aruco.drawAxis(image, self.cam_intr_mat, self.cam_dist_coeff_mat, r, t, 0.05)  # Draw axis
 
             # Show images
-            # cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
-            # cv2.imshow('RealSense', image)
-            # k = cv2.waitKey(0)
+            cv2.namedWindow('RealSense', cv2.WINDOW_AUTOSIZE)
+            cv2.imshow('RealSense', image)
+            k = cv2.waitKey(0)
 
         # If use an Aruco Board
         elif self.calibration_mode == 'b':
             rot_vec = None
             trans_vec = None
-            board = cv2.aruco.GridBoard_create(3, 3, self.marker_side_length_mm, self.marker_separation,
+            board = cv2.aruco.GridBoard_create(3, 3, self.board_marker_side_length_mm, self.marker_separation,
                                            self.aruco_dict)
             success, rot_vec, trans_vec = cv2.aruco.estimatePoseBoard(
                 marker_corners, marker_ids, board, self.cam_intr_mat, self.cam_dist_coeff_mat, rot_vec, trans_vec)
 
-            if success > 0:
-                axis_image = cv2.aruco.drawAxis(image.copy(), self.cam_intr_mat, self.cam_dist_coeff_mat, rot_vec, trans_vec, 0.05)
-                # plt.figure()
-                # plt.imshow(axis_image, origin="upper")
-                # plt.show()
+            # if success > 0:
+            #     axis_image = cv2.aruco.drawAxis(image.copy(), self.cam_intr_mat, self.cam_dist_coeff_mat, rot_vec, trans_vec, 0.05)
+            #     plt.figure()
+            #     plt.imshow(axis_image, origin="upper")
+            #     plt.show()
         else:
             print("Wrong mode: please choose between s and b")
 
@@ -191,15 +207,15 @@ if __name__ == '__main__':
     # handler.save_right_camera_images("./")
 
     parser = argparse.ArgumentParser(description='Process some integers.')
-    parser.add_argument('--pose', default='pose_list_0526_s1.txt',
+    parser.add_argument('--pose', default='pose_list_0528_b1.txt',
                         type=str,
                         dest='pose_path',
                         help='path of pose_list')
-    parser.add_argument('--image', default='images0526_s1',
+    parser.add_argument('--image', default='images0528_b1',
                         type=str,
                         dest='image_path',
                         help='path of calibration images')
-    parser.add_argument('--mode', default='s',
+    parser.add_argument('--mode', default='b',
                         type=str,
                         dest='cali_mode',
                         help='use single marker (s) or marker board (b)')
@@ -208,11 +224,6 @@ if __name__ == '__main__':
     calib = HandEyeCalibration(
         CAMERA_INTRINSICS_MAT, CAMERA_DISTORTION_COEFF_MAT, args.cali_mode)
 
-    # Get R,t ee_to_base
-    # pose = '/home/kejia/wiping/Cognitive-Wiping-Robot/Hand-Eye Calibration/' + args.pose_path
-    cali_path = os.path.realpath(__file__)
-    # print(cali_path)
-    cali_dir, filename = os.path.split(cali_path)
     pose_list = os.path.join(cali_dir, args.pose_path)
     calib.read_ee_to_base_poses_from_file(pose_list)
     T_ee_base = calib.ee_to_base_poses_list
@@ -220,9 +231,14 @@ if __name__ == '__main__':
     t_ee_base = calib.t_ee_to_base_poses_list
     R_base_ee = []
     t_base_ee = []
+    T_base_ee = []
     for r, t in zip(R_ee_base, t_ee_base):
         R_base_ee.append(r.T)
         t_base_ee.append(-r.T.dot(t))
+        T_base_ee_i = np.concatenate(
+            [r.T, (-r.T.dot(t)).reshape((3, 1))], axis=1)
+        T_base_ee.append(np.concatenate(
+            [T_base_ee_i, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0))
     
     # Get R,T c_to_marker
     image_dir = os.path.join(cali_dir, args.image_path)
@@ -230,44 +246,66 @@ if __name__ == '__main__':
     calib.get_poses_from_images(img_list)
     R_marker_cam = calib.R_marker_to_cam_poses_list
     t_marker_cam = calib.t_marker_to_cam_poses_list
+    T_marker_cam = []
+    for r, t in zip(R_marker_cam, t_marker_cam):
+        T_marker_cam_i = np.concatenate(
+            [r, t.reshape((3, 1))], axis=1)
+        T_marker_cam.append(np.concatenate(
+            [T_marker_cam_i, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0))
+
     R_cam_marker = []
     t_cam_marker = []
+    T_cam_marker = []
     for r, t in zip(R_marker_cam, t_marker_cam):
         R_cam_marker.append(r.T) 
         t_cam_marker.append(-r.T.dot(t))
+        T_cam_marker_i = np.concatenate(
+            [r.T, (-r.T.dot(t)).reshape((3, 1))], axis=1)
+        T_cam_marker.append(np.concatenate(
+            [T_cam_marker_i, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0))
 
-    # R_marker_ee, t_marker_ee = cv2.calibrateHandEye(R_ee_base, t_ee_base, R_cam_marker, t_cam_marker,
-    #                                                       cv2.CALIB_HAND_EYE_ANDREFF)
-    #
-    # # T_marker_ee
-    # T_marker_ee = np.concatenate(
-    #     [R_marker_ee, t_marker_ee.reshape((3, 1))], axis=1)
-    # T_marker_ee = np.concatenate(
-    #     [T_marker_ee, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0)
-    #
-    # def calculate_final(index):
-    #     # T_cam_marker
-    #     T_cam_marker_i = np.concatenate(
-    #         [R_cam_marker[index], t_cam_marker[index].reshape((3, 1))], axis=1)
-    #     T_cam_marker_i = np.concatenate(
-    #         [T_cam_marker_i, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0)
-    #
-    #     T_cam_base_i = T_ee_base[index].dot(T_marker_ee).dot(T_cam_marker_i)
-    #     return T_cam_base_i
-    #
-    # T_cam_base = calculate_final(0)
-    # print(calculate_final(0))
-    # print(calculate_final(1))
-    # print(calculate_final(2))
+    R_marker_ee, t_marker_ee = cv2.calibrateHandEye(R_ee_base, t_ee_base, R_cam_marker, t_cam_marker,
+                                                          cv2.CALIB_HAND_EYE_TSAI)
+
+    # T_marker_ee
+    T_marker_ee = np.concatenate(
+        [R_marker_ee, t_marker_ee.reshape((3, 1))], axis=1)
+    T_marker_ee = np.concatenate(
+        [T_marker_ee, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0)
+
+    print(T_marker_ee)
+
+    T_cam_marker = []
+    for i in range(len(R_cam_marker)):
+        T_cam_marker_i = np.concatenate(
+            [R_cam_marker[i], t_cam_marker[i].reshape((3, 1))], axis=1)
+        T_cam_marker_i = np.concatenate(
+            [T_cam_marker_i, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0)
+        T_cam_marker.append(T_cam_marker_i)
+
+    def calculate_final(index):
+        T_cam_base_i = T_ee_base[index].dot(T_marker_ee).dot(T_cam_marker[i])
+        return T_cam_base_i
+
+
+    A = np.dot(np.linalg.inv(T_ee_base[2]), T_ee_base[1])
+    B = np.dot(T_cam_marker[2], np.linalg.inv(T_ee_base[1]))
+
+    T_cam_base = calculate_final(2)
+    print(calculate_final(2))
+    print(calculate_final(3))
 
     # Another Method
-    R_cam_to_base, t_cam_to_base = cv2.calibrateHandEye(R_base_ee[0:10], t_base_ee[0:10], R_marker_cam[0:10], t_marker_cam[0:10],
-                                                          cv2.CALIB_HAND_EYE_ANDREFF)
+    # R_cam_to_base, t_cam_to_base = cv2.calibrateHandEye(R_base_ee[0:20], t_base_ee[0:20], R_marker_cam[0:20], t_marker_cam[0:20],
+    #                                                       cv2.CALIB_HAND_EYE_ANDREFF)
+    #
+    # T_cam_base = np.concatenate(
+    #             [R_cam_to_base, t_cam_to_base.reshape((3, 1))], axis=1)
+    # T_cam_base = np.concatenate(
+    #     [T_cam_base, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0)
 
-    T_cam_base = np.concatenate(
-                [R_cam_to_base, t_cam_to_base.reshape((3, 1))], axis=1)
-    T_cam_base = np.concatenate(
-        [T_cam_base, np.array([0, 0, 0, 1]).reshape((1, 4))], axis=0)
+    # print(T_base_ee[2].dot(T_cam_base).dot(T_marker_cam[2]))
+    # print(T_base_ee[3].dot(T_cam_base).dot(T_marker_cam[3]))
 
     print(T_cam_base)
     T_string = np.array2string(T_cam_base)

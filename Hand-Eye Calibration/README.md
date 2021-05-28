@@ -11,7 +11,7 @@ python camera_handler.py
 ```
 At each position, press ```s``` to save an image in this directory ```/Hand-Eye Calibration```. After enough images are collected, press ```c``` to exit the program.
 ### Collect Transform Matrices
-Transfrom matices ```T_ee_base``` are obtained from the computer connected to panda. To collect transform Matrices, run handeye.py:
+Transfrom matices ```T_ee_base``` are obtained from the computer connected to panda. To collect transform matrices, run handeye.py:
 ```
 python handeye.py
 ```
@@ -42,13 +42,24 @@ T_cam2base = T_gripper2base*T_target2gripper*T_cam2target
 ```
 
 ## Validation
-To validate if the ```T_cam_base``` is correct, on one hand, pick a point in the streaming and get its 3D position ```P_in_cam``` in the reference of the camera:
+### Validation for ```T_cam2target```
+In ```calibration.py```, ```T_cam2target``` is obtained from aruco markers with function ```estimatePoseSingleMarkers``` or ```estimatePoseBoard```. To validate if the result is correct, we compare ```t_cam2target``` to the 3d coordinate of the marker in the camera frame which is obtained directly from realsense depth camera. The comparison shows that the two matche with each other.
+
+### Validation for ```T_gripper2base```
+In ```calibration.py```, ```T_gripper2base``` is read directly from the robot, and thus should not need to be validated.
+
+### Validation for calibration
+We validate if the final ```T_cam_base``` is correct by picking a point in the streaming of the camera, and checking if its 3D coordinate in the base frame calculated with ```T_cam_base``` is consistent with the result read from the robot:
 ```
 python validation.py
 ```
-This will use the matrice ``T_cam_base``` from calibration process to caculate the position in the base reference ```P_from_cam_to_base.
-On the other hand, move the end-effector to the selected point, and read the last column of the current ```T_ee_base``` as the position of the point ```P_in_base``` in the reference of the base.
+This program will allow you to pick a point and print its corresponding coordinates in the base reference. Before running the validation, you need to specify the variable ```transform_matrix``` as the outcome of the previous calibration pocess ```T_cam_base```.
+The pixel coordinate of the picked point as well as its 3D coordinate in the camera frame are also saved to ``` test_node.txt```.
+
+On the other hand, move the end-effector to the selected point, and read the last column of the current ```T_ee_base``` as the position of the point in the reference of the base.
+
+The position of camera in the base coordinate is roughly (0.55, 0.875, 0.605).
 
 ## Trouble 
-The return of calibrateHandEye ```R_target2gripper``` and ```t_target2gripper``` are quite different from each other when calculated from different (image, T_gripper2base) groups, and is not consistent with the result from validation.
+The return of calibrateHandEye ```R_target2gripper``` and ```t_target2gripper``` are quite different from each other when calculated from different (image, T_gripper2base) groups, and is not consistent with the result from validation or measurement.
 

@@ -11,6 +11,11 @@ import cv2
 import os
 from Cognition import Cognition
 
+transform_matrix =  np.arrat([[-1.02487292,  0.34022334,  0.02018987,  0.53352241],
+ [ 0.17523787,  0.87148062, -0.43759237,  0.70475617],
+ [-0.0255134 , -0.66172576, -0.5131572 ,  0.49851241],
+ [ 0.        ,  0.        ,  0.        ,  1.        ]])
+
 
 if __name__ == "__main__":
     # Configure depth and color streams
@@ -91,7 +96,12 @@ if __name__ == "__main__":
                     select_list_2d.append(coord_3d)
                     with open(file, 'a') as f:
                         f.write('%s\n' % coord_3d)
-                    print(coord_3d)
+                        f.write('%s\n' % xy)
+                    print("point in camera frame:", coord_3d)
+                    p_in_cam = np.array(coord_3d.append(1.0))
+                    p_in_cam = p_in_cam.reshape((4, 1))
+                    p_in_base = transform_matrix.dot(coord_3d)
+                    print("point in base frame:", p_in_base)
                     # test_2d = rs.rs2_project_point_to_pixel(color_intr, [rx, ry, rz])
                     cv2.circle(color_image, (x, y), 1, (255, 0, 0), thickness=-1)
                     cv2.putText(color_image, xy, (x, y), cv2.FONT_HERSHEY_PLAIN,

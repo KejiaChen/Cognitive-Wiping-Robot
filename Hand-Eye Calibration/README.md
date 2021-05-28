@@ -2,7 +2,10 @@
 This project is for hand-eye calibration of the panda robot in a hand-to-eye scenario. The camera and the base of robot are fixed respectively, and the calibration board is held by the gripper of the robot. The goal of calibration is to get the transform matice from camera to the base ```T_cam_base```.
 
 ## Collecting Data
-To do the hand-eye calibration, 1. images of the robot holding the calibration board and 2. transform matrices from the end-effector to the base ```T_ee_base``` need to be collected simultaneously.
+To do the hand-eye calibration, 
+1. images of the robot holding the calibration board and
+2. transform matrices from the end-effector to the base ```T_ee_base``` 
+need to be collected simultaneously.
 ### Collect Images
 To collect images, run the camera_handler.py in this directory:
 ``` 
@@ -43,7 +46,7 @@ T_cam2base = T_gripper2base*T_target2gripper*T_cam2target
 
 ## Validation
 ### Validation for ```T_cam2target```
-In ```calibration.py```, ```T_cam2target``` is obtained from aruco markers with function ```estimatePoseSingleMarkers``` or ```estimatePoseBoard```. To validate if the result is correct, we compare ```t_cam2target``` to the 3d coordinate of the marker in the camera frame which is obtained directly from realsense depth camera. The comparison shows that the two matche with each other.
+In ```calibration.py```, ```T_cam2target``` is obtained from aruco markers with opencv function ```estimatePoseSingleMarkers``` or ```estimatePoseBoard```. To validate if the result is correct, we compare ```t_cam2target``` to the 3d coordinate of the marker in the camera frame which is obtained directly from realsense depth camera. The comparison shows that the two matche with each other.
 
 ### Validation for ```T_gripper2base```
 In ```calibration.py```, ```T_gripper2base``` is read directly from the robot, and thus should not need to be validated.
@@ -61,5 +64,5 @@ On the other hand, move the end-effector to the selected point, and read the las
 The position of camera in the base coordinate is roughly (0.55, 0.875, 0.605).
 
 ## Trouble 
-The return of calibrateHandEye ```R_target2gripper``` and ```t_target2gripper``` are quite different from each other when calculated from different (image, T_gripper2base) groups, and is not consistent with the result from validation or measurement.
+When calculated from different (image, T_gripper2base) groups, the returns of calibrateHandEye ```R_target2gripper``` and ```t_target2gripper``` are quite different from each other, and are not consistent with the result from validation or measurement.
 
